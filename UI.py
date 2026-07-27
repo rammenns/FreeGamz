@@ -1,7 +1,7 @@
 import sys
 from sqlite3 import connect
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QScrollArea, QPushButton, QProgressBar, QCheckBox, QToolButton, QMenu, QWidgetAction, QMessageBox
-from PyQt5.QtGui import QIcon, QPixmap, QFontDatabase, QFont, QGuiApplication, QCursor
+from PyQt5.QtGui import QIcon, QPixmap, QFontDatabase, QFont
 from PyQt5.QtCore import Qt, QTimer
 from webbrowser import open_new_tab
 from requests import get
@@ -39,6 +39,7 @@ def updatepth():
         return Path(tempfile.gettempdir()) / "update.exe"
     elif syst == "Darwin":
         return Path(tempfile.gettempdir()) / "update.app"
+    return None
 
 class updatebutton(QPushButton):
     def __init__(self, font, newver):
@@ -83,6 +84,10 @@ class updatebutton(QPushButton):
     def update(self):
 
         self.setEnabled(False)
+
+        scriptpth = None
+        old = None
+        shellpth = None
 
         try:
 
@@ -134,7 +139,7 @@ class updatebutton(QPushButton):
                 scriptpth = old.with_name("Linux Gamzy.AppImage")
                 shellpth = old.with_name("update.sh")
 
-            with open(scriptpth, "wb") as f:
+            with open(str(scriptpth), "wb") as f:
                 for chunk in file.iter_content(8192):
                     if chunk:
                         f.write(chunk)
@@ -248,7 +253,7 @@ class updatebutton(QPushButton):
 
             QApplication.quit()
 
-        except:
+        except Exception:
             self.setText("Update failed :( Try again")
             self.progress.hide()
             self.setEnabled(True)
@@ -793,6 +798,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
 
         try:
+            gamespth = str(dr() / "games.db")
             conn = connect(gamespth, timeout=10)
             cursor = conn.cursor()
 
