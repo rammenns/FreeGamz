@@ -1,14 +1,15 @@
 from sqlite3 import connect, OperationalError
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from random import uniform
 from time import sleep
 from pathlib import Path
 from desktop_notifier import DesktopNotifier, Button
+from subprocess import Popen
 import sys
 import httpx
 import asyncio
-from requests import Session, get
+from requests import Session
 import json
 import platform
 syst = platform.system()
@@ -22,12 +23,7 @@ def dr():
     return Path(__file__).resolve().parent
 
 def Gamzy():
-
-    if syst == "Windows":
-        exec = "Gamzy.exe"
-    else:
-        exec = "Gamzy"
-    Popen([str(dr() / exec)])
+    Popen([str(dr() / "Gamzy.exe" if syst == "Windows" else "Gamzy")])
 
 def namecut(nam):
     inval = '<>:"/\\|?*'
@@ -85,6 +81,8 @@ async def mainscript(gmz, conngmz):
 
             conngmz.commit()
 
+            conncheck = None
+            chk = None
             try:
                 checkpth = str(dr() / "check.db")
                 conncheck = connect(checkpth, timeout = 10)
@@ -93,7 +91,7 @@ async def mainscript(gmz, conngmz):
                 pass
 
             thisissil = None
-            if chk:
+            if chk is not None:
                 chk.execute(" SELECT 1 FROM sqlite_master WHERE type='table' AND name='checks' ")
                 if chk.fetchone():
 
@@ -112,21 +110,18 @@ async def mainscript(gmz, conngmz):
                     if "itchlogo.png" in silencedones:
                         thisissil += silans["itch.io"]
 
-                conncheck.close()
+                if conncheck is not None:
+                    conncheck.close()
 
 
             if thisissil is None or thisissil < len(silencedones):
-                if getattr(sys, "frozen", False):
-                    base = Path(sys._MEIPASS)
-                else:
-                    base = Path(__file__).resolve().parent
 
                 notif = DesktopNotifier()
 
                 await notif.send(
-                    title = "Gamzy",
-                    message = "Hey! There are new games waiting for you!",
-                    icon = dr() / "AppLogo.png",
+                    title = "Gamz Found!",
+                    message = "Hey, there are new games waiting for you! Check 'em now!",
+                    #icon = dr() / "AppLogo.png",
                     buttons = [
                         Button(
                             title = "Open",
@@ -262,7 +257,8 @@ async def mainscript(gmz, conngmz):
                             if goghrf:
                                 goggam = goghrf.rstrip('/').split('/')[-1]
                                 gognam = goggam.replace('_', ' ').title()
-                                goggam = goggamn.find('store-picture')
+                                if goggamn:
+                                    goggam = goggamn.find('store-picture')
                                 gogfile = ""
                                 if goggam:
                                     goggam = goggam.find('picture')
@@ -543,10 +539,7 @@ def main():
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Old",))
 
         ####################################################################
-        try:
-            chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Old",))
-        except:
-            pass
+        chk.execute("INSERT OR IGNORE INTO checks(platform) VALUES (?)", ("Old",))
         ####################################################################
 
         conncheck.commit()
@@ -673,10 +666,8 @@ def main():
 
     except Exception as e:
         for conn in [connsafe, conntmr, conngmz]:
-            try:
+            if conn is not None:
                 conn.close()
-            except:
-                pass
         print(f"\033[1;91m ERROR: \033[0;91m Main script FAILED \033[0m {e}")
 
 if __name__ == "__main__":
