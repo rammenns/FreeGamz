@@ -13,7 +13,9 @@ import platform
 syst = platform.system()
 if syst == "Windows":
     from ctypes import windll
-elif syst not in {"Darwin", "Linux"}:
+elif syst == "Linux":
+    from shutil import which
+elif syst != "Darwin":
     app = QApplication(sys.argv)
     QMessageBox.critical(
         None,
@@ -86,7 +88,6 @@ class updatebutton(QPushButton):
         self.setEnabled(False)
 
         scriptpth = None
-        old = None
         shellpth = None
 
         try:
@@ -98,6 +99,10 @@ class updatebutton(QPushButton):
                     pass
                 except PermissionError:
                     pass
+            elif which("pkexec") is None:
+                self.setText("pkexec is required for updates")
+                self.setEnabled(True)
+                return
 
             url = get("https://api.github.com/repos/rammenns/Gamzy/releases/latest", timeout=5)
             if url.status_code != 200:
@@ -109,7 +114,7 @@ class updatebutton(QPushButton):
             downl= None
 
             for asset in new['assets']:
-                if (syst == "Windows" and asset["name"].endswith(".exe")) or (syst == "Darwin" and asset["name"].endswith(".dmg")) or (syst == "Linux" and asset["name"].endswith(".AppImage")):
+                if (syst == "Windows" and asset["name"].endswith(".exe")) or (syst == "Darwin" and asset["name"].endswith(".dmg")) or (syst == "Linux" and asset["name"].endswith(".tar.gz")):
                     downl = asset["browser_download_url"]
                     break
 
@@ -135,9 +140,8 @@ class updatebutton(QPushButton):
                 scriptpth = updatepth()
 
             elif syst == "Linux":
-                old = Path(os.environ["APPIMAGE"])
-                scriptpth = old.with_name("Linux Gamzy.AppImage")
-                shellpth = old.with_name("update.sh")
+                scriptpth = dr() / "update.tar.gz"
+                shellpth = dr() / "update.sh"
 
             with open(str(scriptpth), "wb") as f:
                 for chunk in file.iter_content(8192):
@@ -235,15 +239,25 @@ class updatebutton(QPushButton):
                 )
 
                 script = f"""#!/bin/sh
-                sleep 2
+sleep 2
 
-                rm -f "{old}"
-                mv "{scriptpth}" "{old}"
+cd "{dr()}"
 
-                chmod +x "{old}"
+mkdir -p .update
 
-                exec "{old}"
-                """
+tar -xzf update.tar.gz -C .update
+
+cp -rf .update/Gamzy/* .
+
+chmod +x Gamzy
+chmod +x GamzScript
+chmod +x "Create Shortcut.sh"
+
+rm update.tar.gz
+rm -rf .update
+
+exec ./Gamzy
+"""
                 with open(shellpth, "w") as f:
                     f.write(script)
 
@@ -602,7 +616,7 @@ class MainWindow(QMainWindow):
                 if ver["tag_name"] != "1.9":
                     tag_name = ver["tag_name"]
                     for asset in ver['assets']:
-                        if (syst == "Windows" and asset["name"].endswith(".exe")) or (syst == "Darwin" and asset["name"].endswith(".dmg")) or (syst == "Linux" and asset["name"].endswith(".AppImage")):
+                        if (syst == "Windows" and asset["name"].endswith(".exe")) or (syst == "Darwin" and asset["name"].endswith(".dmg")) or (syst == "Linux" and asset["name"].endswith(".tar.gz")):
                             self.scrolyout.addWidget(updatebutton(self.basefont, tag_name))
                             break
             except:
