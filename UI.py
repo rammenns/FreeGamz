@@ -416,21 +416,17 @@ class MainWindow(QMainWindow):
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("GOG",))
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("itch.io",))
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Old",))
+            chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Ubisoft",))
 
-            chk.execute("SELECT platform, hide, silence FROM checks")
-            rows = chk.fetchall()
-
-        ####################################################################
-        try:
-            chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Old",))
-            conncheck.commit()
-            chk.execute("SELECT platform, hide, silence FROM checks")
-            rows = chk.fetchall()
-        except:
-            pass
-        ####################################################################
+        ##############################################################################
+        chk.execute("INSERT OR IGNORE INTO checks(platform) VALUES (?)", ("Old",))
+        chk.execute("INSERT OR IGNORE INTO checks(platform) VALUES (?)", ("Ubisoft",))
+        ##############################################################################
 
         conncheck.commit()
+
+        chk.execute("SELECT platform, hide, silence FROM checks")
+        rows = chk.fetchall()
 
         self.hidedropdown = QToolButton()
         self.hidedropdown.setText("Hide    >")
@@ -524,6 +520,13 @@ class MainWindow(QMainWindow):
         self.hidemenu.addAction(goghide_action)
         hidegog.toggled.connect(lambda checked: self.togg("GOG", True, checked))
 
+        hideubi = QCheckBox("Ubisoft")
+        hideubi.setChecked(presets.get("Ubisoft", {}).get("hide", False))
+        ubihide_action = QWidgetAction(self)
+        ubihide_action.setDefaultWidget(hideubi)
+        self.hidemenu.addAction(ubihide_action)
+        hideubi.toggled.connect(lambda checked: self.togg("Ubisoft", True, checked))
+
         hideitch = QCheckBox("itch.io")
         hideitch.setChecked(presets.get("itch.io", {}).get("hide", False))
         itchhide_action = QWidgetAction(self)
@@ -563,6 +566,13 @@ class MainWindow(QMainWindow):
         gogsil_action.setDefaultWidget(silgog)
         self.silmenu.addAction(gogsil_action)
         silgog.toggled.connect(lambda checked: self.togg("GOG", False, checked))
+
+        silubi = QCheckBox("Ubisoft")
+        silubi.setChecked(presets.get("Ubisoft", {}).get("silence", False))
+        ubisil_action = QWidgetAction(self)
+        ubisil_action.setDefaultWidget(silubi)
+        self.silmenu.addAction(ubisil_action)
+        silubi.toggled.connect(lambda checked: self.togg("Ubisoft", False, checked))
 
         silitch = QCheckBox("itch.io")
         silitch.setChecked(presets.get("itch.io", {}).get("silence", False))
@@ -635,6 +645,7 @@ class MainWindow(QMainWindow):
         goghide = rows[2][0]
         ithide = rows[3][0]
         oldhide = rows[4][0]
+        ubihide = rows[5][0]
 
 
         conn = None
@@ -650,10 +661,11 @@ class MainWindow(QMainWindow):
             cursor.execute("""
                 SELECT link, image, name, platform, new FROM games
                 ORDER BY CASE platform
-                    WHEN 'goglogo.png' THEN 1
-                    WHEN 'steamlogo.png' THEN 2
-                    WHEN 'epiclogo.png' THEN 3
-                    WHEN 'itchlogo.png' THEN 4
+                    WHEN 'ubilogo.png' THEN 1
+                    WHEN 'goglogo.png' THEN 2
+                    WHEN 'steamlogo.png' THEN 3
+                    WHEN 'epiclogo.png' THEN 4
+                    WHEN 'itchlogo.png' THEN 5
                 END,
                 new DESC,
                 name
@@ -667,6 +679,8 @@ class MainWindow(QMainWindow):
             if len(name) > 43:
                 name = name[:40] + "..."
             if oldhide and not new:
+                continue
+            if ubihide and platform == "ubilogo.png":
                 continue
             if goghide and platform == "goglogo.png":
                 continue

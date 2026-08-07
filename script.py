@@ -109,6 +109,8 @@ async def mainscript(gmz, conngmz):
                         thisissil += silans["GOG"]
                     if "itchlogo.png" in silencedones:
                         thisissil += silans["itch.io"]
+                    if "ubilogo.png" in silencedones:
+                        thisissil += silans["Ubisoft"]
 
                 if conncheck is not None:
                     conncheck.close()
@@ -136,7 +138,7 @@ async def mainscript(gmz, conngmz):
             dbimgs = {Path(rowaw[0]).name for rowaw in gmz.fetchall()}
 
             for file in folder.iterdir():
-                if file.name not in dbimgs and file.name not in {"steamlogo.png", "epiclogo.png", "goglogo.png", "itchlogo.png"}:
+                if file.name not in dbimgs and file.name not in {"steamlogo.png", "epiclogo.png", "goglogo.png", "itchlogo.png", "ubilogo.png"}:
                     file.unlink()
 
             print("Database updated    \033[92m SUCCESS \033[0m")
@@ -471,10 +473,77 @@ async def mainscript(gmz, conngmz):
                 print(f"itch.io scrapping   \033[91m FAILED \033[0m {e}")
 
 
+        async def ubiscrap():
+
+            print("\033[1m Requesting Ubisoft URL: \033[0m")
+
+            try:
+
+                async with httpx.AsyncClient(timeout=5, follow_redirects=True) as ubi:
+
+                    ubiheaders = {
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Accept-Encoding": "gzip, deflate, br, zstd",
+                        "Accept-Language": "en-US,en;q=0.9",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0"
+                    }
+
+                    ubi.headers.update(ubiheaders)
+
+                    ubiresponse = await ubi.get("https://store.ubisoft.com/ie/free-pc-games?lang=en-ZW")
+
+                    ubiresponse.raise_for_status()
+
+                    print("Ubisoft request     \033[92m SUCCESS \033[0m")
+
+                    ubisoup = BeautifulSoup(ubiresponse.text, 'html.parser')
+
+                    for ubigam in ubisoup.find_all('store-operability-focus-banner'):
+                        print("Ubi offer found")
+                        print(ubigam.attrs)
+                        ubibackgr = ubigam.get("background")
+                        ubipara = ubigam.get("click-event-params")
+                        if (ubibackgr and "giveaway" in ubibackgr.lower()) or (ubipara and "giveaway" in ubipara.lower()):
+                            ubihrf = ubigam.get("main-cta-link")
+                            print("BACKGROUND:", ubibackgr)
+                            print("PARAMS:", ubipara)
+                            if ubihrf:
+                                print(ubihrf)
+                                ubinam = ubigam.get("title-text")
+                                if ubinam:
+                                    ubinam = BeautifulSoup(ubinam, "html.parser").get_text(strip=True).removeprefix("Get ").removesuffix(" for free!")
+                                else:
+                                    ubinam = ""
+                                print(ubinam)
+                                ubifile = ""
+                                ubiurl = ubigam.get("logo")
+                                if ubiurl:
+                                    ubiext = Path(ubiurl.split("?")[0]).suffix
+                                    ubifile = dr() / "gamzimgs" / f"{namecut(ubinam)}{ubiext}"
+                                    if not ubifile.exists():
+                                        ubiimgresp = await ubi.get(ubiurl)
+                                        ubiimgresp.raise_for_status()
+                                        with open(ubifile, "wb") as f:
+                                            f.write(ubiimgresp.content)
+
+                                print("ubifile")
+                                links.append(ubihrf)
+                                names.append(ubinam)
+                                imgs.append(ubifile)
+                                platforms.append("ubilogo.png")
+
+                    print("Ubisoft scrapping   \033[92m SUCCESS \033[0m")
+
+            except Exception as e:
+                fail.append("ubilogo.png")
+                print(f"Ubisoft scrapping   \033[91m FAILED \033[0m {e}")
+
+
         await asyncio.gather(
             steamscrap(),
             gogscrap(),
             itchscrap(),
+            ubiscrap(),
             asyncio.to_thread(epicscrap)
         )
 
@@ -537,9 +606,11 @@ def main():
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("GOG",))
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("itch.io",))
             chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Old",))
+            chk.execute("INSERT INTO checks(platform) VALUES (?)", ("Ubisoft",))
 
         ####################################################################
         chk.execute("INSERT OR IGNORE INTO checks(platform) VALUES (?)", ("Old",))
+        chk.execute("INSERT OR IGNORE INTO checks(platform) VALUES (?)", ("Ubisoft",))
         ####################################################################
 
         conncheck.commit()
