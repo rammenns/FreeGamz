@@ -1,15 +1,6 @@
-import sys
-from sqlite3 import connect
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QScrollArea, QPushButton, QProgressBar, QCheckBox, QToolButton, QMenu, QWidgetAction, QMessageBox
-from PyQt5.QtGui import QIcon, QPixmap, QFontDatabase, QFont
-from PyQt5.QtCore import Qt, QTimer
-from webbrowser import open_new_tab
-from requests import get
-import subprocess
-from pathlib import Path
-import tempfile
-import os
 import platform
+from PyQt5.QtWidgets import QApplication, QMessageBox
+import sys
 syst = platform.system()
 if syst == "Windows":
     from ctypes import windll
@@ -23,6 +14,16 @@ elif syst != "Darwin":
         f"Unsupported operating system: {syst}\n\nBut I can fix this if you ask nicely :3"
     )
     sys.exit(1)
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy, QScrollArea, QPushButton, QProgressBar, QCheckBox, QToolButton, QMenu, QWidgetAction, QMessageBox
+from PyQt5.QtGui import QIcon, QPixmap, QFontDatabase, QFont
+from PyQt5.QtCore import Qt, QTimer
+from webbrowser import open_new_tab
+from requests import get
+import subprocess
+from pathlib import Path
+import tempfile
+import os
+from sqlite3 import connect
 
 def pathfind(f):
     if getattr(sys, "frozen", False):
@@ -30,6 +31,15 @@ def pathfind(f):
     else:
         base = Path(__file__).resolve().parent
     return base / f
+
+def dbdr():
+    if not getattr(sys, "frozen", False):
+        return Path(__file__).resolve().parent
+    elif syst != "Darwin":
+        return Path(sys.executable).parent
+    macOSpth = Path.home() / "Library" / "Application Support" / "Gamzy"
+    macOSpth.mkdir(parents=True, exist_ok=True)
+    return macOSpth
 
 def dr():
     if getattr(sys, "frozen", False):
@@ -40,7 +50,7 @@ def updatepth():
     if syst == "Windows":
         return Path(tempfile.gettempdir()) / "update.exe"
     elif syst == "Darwin":
-        return Path(tempfile.gettempdir()) / "update.app"
+        return Path(tempfile.gettempdir()) / "update.dmg"
     return None
 
 class updatebutton(QPushButton):
@@ -58,6 +68,9 @@ class updatebutton(QPushButton):
         self.progress.setGeometry(125, 75, 650, 25)
         self.progress.setTextVisible(False)
         self.progress.hide()
+
+        if not getattr(sys, "frozen", False):
+            self.setEnabled(False)
 
         self.setStyleSheet("""
             QPushButton{
@@ -138,10 +151,11 @@ class updatebutton(QPushButton):
 
             elif syst == "Darwin":
                 scriptpth = updatepth()
+                shellpth = dbdr() / "update.sh"
 
             elif syst == "Linux":
-                scriptpth = dr() / "update.tar.gz"
-                shellpth = dr() / "update.sh"
+                scriptpth = dbdr() / "update.tar.gz"
+                shellpth = dbdr() / "update.sh"
 
             with open(str(scriptpth), "wb") as f:
                 for chunk in file.iter_content(8192):
@@ -160,7 +174,7 @@ class updatebutton(QPushButton):
             self.setText("Installing...")
             QApplication.processEvents()
 
-            safepth = str(dr() / "safe.db")
+            safepth = str(dbdr() / "safe.db")
             connsafe = connect(safepth, timeout=10)
             safe = connsafe.cursor()
             safe.execute("SELECT safe FROM safety")
@@ -203,6 +217,21 @@ class updatebutton(QPushButton):
 
             elif syst == "Darwin":
 
+                check = subprocess.run(
+                    [
+                        "hdiutil",
+                        "verify",
+                        str(updatepth())
+                    ],
+                    capture_output=True
+                )
+
+                if check.returncode != 0:
+                    self.setText("Update failed :( Try again?")
+                    self.progress.hide()
+                    self.setEnabled(True)
+                    return
+
                 subprocess.run(
                     [
                         "pkill",
@@ -212,16 +241,58 @@ class updatebutton(QPushButton):
                     capture_output=True
                 )
 
+                script = f"""#!/bin/sh
+(
+sleep 5
+
+MOUNT="/tmp/GamzyUpdateMount"
+
+mkdir -p "$MOUNT"
+
+if ! hdiutil attach "{updatepth()}" -mountpoint "$MOUNT" -nobrowse; then
+    exit 1
+fi
+
+rm -rf "/Applications/Gamzy.app"
+if ! cp -R "$MOUNT/Gamzy.app" "/Applications/Gamzy.app"; then
+    hdiutil detach "$MOUNT"
+    exit 1
+fi
+
+hdiutil detach "$MOUNT"
+
+rm -f "{updatepth()}"
+
+open "/Applications/Gamzy.app"
+
+) >/dev/null 2>&1 &
+
+exit 0
+"""
+                with open(shellpth, "w") as f:
+                    f.write(script)
+
+                subprocess.run(["chmod", "+x", str(shellpth)])
+
+                applescript = '''
+on run argv
+    do shell script quoted form of (item 1 of argv) with administrator privileges
+end run
+'''
+
                 permission = subprocess.run(
                     [
                         "osascript",
                         "-e",
-                        f'do shell script "{str(updatepth())} --silent" with administrator privileges'
+                        applescript,
+                        str(shellpth)
                     ],
-                    capture_output=True
+                    capture_output=True,
+                    text=True
                 )
+
                 if permission.returncode != 0:
-                    self.setText("Update canceled :( Try again")
+                    self.setText("Update canceled :( Try again?")
                     self.progress.hide()
                     self.setEnabled(True)
                     subprocess.Popen([str(dr() / "GamzScript")])
@@ -375,7 +446,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Gamzy")
         self.setFixedSize(1000, 415)
         self.move(510, 350)
-        self.setWindowIcon(QIcon(str(pathfind("AppLogo.png"))))
+        self.setWindowIcon(QIcon(str(pathfind("gamzylogo.png"))))
         self.setObjectName("window")
 
         central = QWidget()
@@ -393,7 +464,7 @@ class MainWindow(QMainWindow):
         checkpth = None
         conncheck = None
         try:
-            checkpth = str(dr() / "check.db")
+            checkpth = str(dbdr() / "check.db")
             conncheck = connect(checkpth, timeout = 180)
             chk = conncheck.cursor()
         except:
@@ -583,7 +654,7 @@ class MainWindow(QMainWindow):
 
 
     def togg(self, plat, wh, ch):
-        checkpth = str(dr() / "check.db")
+        checkpth = str(dbdr() / "check.db")
         conncheck = connect(checkpth, timeout = 180)
         chk = conncheck.cursor()
         if wh:
@@ -632,7 +703,7 @@ class MainWindow(QMainWindow):
             except:
                 pass
 
-        checkpth = str(dr() / "check.db")
+        checkpth = str(dbdr() / "check.db")
         conncheck = connect(checkpth, timeout = 180)
         chk = conncheck.cursor()
 
@@ -651,7 +722,7 @@ class MainWindow(QMainWindow):
         conn = None
         cursor = None
         try:
-            gamespth = str(dr() / "games.db")
+            gamespth = str(dbdr() / "games.db")
             conn = connect(gamespth, timeout = 10)
             cursor = conn.cursor()
         except:
@@ -682,7 +753,7 @@ class MainWindow(QMainWindow):
                 continue
             if ubihide and platform == "ubilogo.png":
                 continue
-            if goghide and platform == "goglogo.png":
+            elif goghide and platform == "goglogo.png":
                 continue
             elif sthide and platform == "steamlogo.png":
                 continue
@@ -826,7 +897,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
 
         try:
-            gamespth = str(dr() / "games.db")
+            gamespth = str(dbdr() / "games.db")
             conn = connect(gamespth, timeout=10)
             cursor = conn.cursor()
 

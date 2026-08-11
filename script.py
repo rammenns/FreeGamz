@@ -1,3 +1,9 @@
+import platform
+import sys
+syst = platform.system()
+if syst not in {"Windows", "Darwin", "Linux"}:
+    print(f"Unsupported operating system: {syst}")
+    sys.exit(1)
 from sqlite3 import connect, OperationalError
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
@@ -6,24 +12,25 @@ from time import sleep
 from pathlib import Path
 from desktop_notifier import DesktopNotifier, Button
 from subprocess import Popen
-import sys
 import httpx
 import asyncio
 from requests import Session
 import json
-import platform
-syst = platform.system()
-if syst not in {"Windows", "Darwin", "Linux"}:
-    print(f"Unsupported operating system: {syst}")
-    sys.exit(1)
 
 def dr():
-    if getattr(sys, "frozen", False):
+    if not getattr(sys, "frozen", False):
+        return Path(__file__).resolve().parent
+    elif syst != "Darwin":
         return Path(sys.executable).parent
-    return Path(__file__).resolve().parent
+    macOSpth = Path.home() / "Library" / "Application Support" / "Gamzy"
+    macOSpth.mkdir(parents=True, exist_ok=True)
+    return macOSpth
 
 def Gamzy():
-    Popen([str(dr() / "Gamzy.exe" if syst == "Windows" else "Gamzy")])
+    if syst != "Darwin":
+        Popen([str((Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent) / ("Gamzy.exe" if syst == "Windows" else "Gamzy"))])
+    else:
+        Popen(["open", "/Applications/Gamzy.app"])
 
 def namecut(nam):
     inval = '<>:"/\\|?*'
@@ -499,22 +506,16 @@ async def mainscript(gmz, conngmz):
                     ubisoup = BeautifulSoup(ubiresponse.text, 'html.parser')
 
                     for ubigam in ubisoup.find_all('store-operability-focus-banner'):
-                        print("Ubi offer found")
-                        print(ubigam.attrs)
                         ubibackgr = ubigam.get("background")
                         ubipara = ubigam.get("click-event-params")
                         if (ubibackgr and "giveaway" in ubibackgr.lower()) or (ubipara and "giveaway" in ubipara.lower()):
                             ubihrf = ubigam.get("main-cta-link")
-                            print("BACKGROUND:", ubibackgr)
-                            print("PARAMS:", ubipara)
                             if ubihrf:
-                                print(ubihrf)
                                 ubinam = ubigam.get("title-text")
                                 if ubinam:
                                     ubinam = BeautifulSoup(ubinam, "html.parser").get_text(strip=True).removeprefix("Get ").removesuffix(" for free!")
                                 else:
                                     ubinam = ""
-                                print(ubinam)
                                 ubifile = ""
                                 ubiurl = ubigam.get("logo")
                                 if ubiurl:
@@ -526,7 +527,6 @@ async def mainscript(gmz, conngmz):
                                         with open(ubifile, "wb") as f:
                                             f.write(ubiimgresp.content)
 
-                                print("ubifile")
                                 links.append(ubihrf)
                                 names.append(ubinam)
                                 imgs.append(ubifile)
