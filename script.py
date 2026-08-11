@@ -62,7 +62,6 @@ async def mainscript(gmz, conngmz):
                     faillist = ",".join("?" for _ in fail)
                     gmz.execute(f"DELETE FROM games WHERE link NOT IN ({linklist}) AND platform NOT IN ({faillist})",
                                 links + fail)
-                gmz.execute("UPDATE games SET new = ? WHERE seen = ?", (False, True))
                 gmz.execute("SELECT link, image FROM games")
                 linki = {link: i for i, link in enumerate(links)}
                 for link, image in gmz.fetchall():
@@ -640,8 +639,7 @@ def main():
             image TEXT,
             name TEXT,
             platform TEXT NOT NULL,
-            new BOOLEAN NOT NULL DEFAULT TRUE,
-            seen BOOLEAN NOT NULL DEFAULT FALSE
+            new BOOLEAN NOT NULL DEFAULT TRUE
         )
         """)
 
@@ -651,7 +649,7 @@ def main():
         except OperationalError:
             pass
         try:
-            gmz.execute("ALTER TABLE games ADD COLUMN seen BOOLEAN NOT NULL DEFAULT FALSE")
+            gmz.execute("ALTER TABLE games DROP COLUMN seen")
         except OperationalError:
             pass
         ##############################################################################

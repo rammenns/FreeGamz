@@ -901,7 +901,7 @@ class MainWindow(QMainWindow):
             conn = connect(gamespth, timeout=10)
             cursor = conn.cursor()
 
-            cursor.execute("UPDATE games SET seen = ?", (True,))
+            cursor.execute("UPDATE games SET new = ?", (False,))
 
             conn.close()
         except:
