@@ -902,6 +902,7 @@ class MainWindow(QMainWindow):
             cursor = conn.cursor()
 
             cursor.execute("UPDATE games SET new = ?", (False,))
+            conn.commit()
 
             conn.close()
         except:
