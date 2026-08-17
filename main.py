@@ -42,7 +42,7 @@ def dr():
     return Path(__file__).resolve().parent
 
 def gamzscript():
-    return "Gamzy.exe" if syst == "Windows" else "GamzScript.exe"
+    return "GamzScript.exe" if syst == "Windows" else "GamzScript"
 
 def uirun():
     global oneinstance
@@ -70,8 +70,11 @@ def main():
     if syst == "Linux":
         autostartx()
 
-    if syst in {"Windows", "Darwin", "Linux"} and not scriptrun():
-        Popen([str(dr() / gamzscript())])
+    if not scriptrun():
+        if syst in {"Windows", "Linux"}
+            Popen([str(dr() / gamzscript())])
+        elif syst == "Darwin":
+            Popen(["open", "/Applications/GamzScript.app"])
 
     window = MainWindow()
     window.show()
