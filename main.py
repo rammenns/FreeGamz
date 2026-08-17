@@ -1,5 +1,5 @@
 import sys
-from subprocess import Popen
+import subprocess
 import psutil
 from socket import socket, AF_INET, SOCK_STREAM, error
 from PyQt5.QtWidgets import QApplication
@@ -10,20 +10,23 @@ syst = platform.system()
 oneinstance = None
 
 def autostartx():
-    script = dr() / "GamzScript"
 
-    if not script.exists():
-        return
+    if syst == "Linux":
 
-    autostart = Path.home() / ".config" / "autostart"
-    autostart.mkdir(parents = True, exist_ok = True)
+        script = dr() / "GamzScript"
 
-    desktop = autostart / "GamzScript.desktop"
+        if not script.exists():
+            return
 
-    if desktop.exists() and f'Exec="{script}"' in desktop.read_text(encoding = "utf-8"):
-        return
+        autostart = Path.home() / ".config" / "autostart"
+        autostart.mkdir(parents = True, exist_ok = True)
 
-    desktop.write_text(
+        desktop = autostart / "GamzScript.desktop"
+
+        if desktop.exists() and f'Exec="{script}"' in desktop.read_text(encoding = "utf-8"):
+            return
+
+        desktop.write_text(
 f"""[Desktop Entry]
 Type=Application
 Version=1.0
@@ -33,8 +36,59 @@ Exec="{script}"
 Terminal=False
 X-GNOME-Autostart-enabled=true
 """,
-        encoding = "utf-8"
-    )
+            encoding = "utf-8"
+        )
+
+    else:
+
+        uid = subprocess.check_output(["id", "-u"], text=True).strip()
+        service = f"gui/{uid}/com.gamzy.GamzScript"
+
+        check = subprocess.run(
+            ["launchctl", "print", service],
+            capture_output=True
+        )
+
+        if check.returncode == 0:
+            return True
+
+        script = Path("/Applications/Gamzy.app/Contents/MacOS/GamzScript")
+
+        if not script.exists():
+            return False
+
+        launchagents = Path.home() / "Library" / "LaunchAgents"
+        launchagents.mkdir(parents=True, exist_ok=True)
+
+        plist = launchagents / "com.gamzy.GamzScript.plist"
+
+        plist.write_text(
+f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.gamzy.GamzScript</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{script}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+""",
+            encoding="utf-8"
+        )
+
+        resultz = subprocess.run([
+            "launchctl",
+            "bootstrap",
+            f"gui/{uid}",
+            str(plist)
+        ])
+        return resultz.returncode == 0
 
 def dr():
     if getattr(sys, "frozen", False):
@@ -67,14 +121,14 @@ def main():
     if uirun():
         return
 
-    if syst == "Linux":
-        autostartx()
+    if syst in {"Linux", "Darwin"}:
+        autoxbool = autostartx() if syst == "Darwin" else None
 
     if not scriptrun():
         if syst in {"Windows", "Linux"}:
-            Popen([str(dr() / gamzscript())])
-        elif syst == "Darwin":
-            Popen(["open", "/Applications/GamzScript.app"])
+            subprocess.Popen([str(dr() / gamzscript())])
+        elif syst == "Darwin" and not autoxbool:
+            subprocess.Popen(["/Applications/Gamzy.app/Contents/MacOS/GamzScript"])
 
     window = MainWindow()
     window.show()
