@@ -71,7 +71,7 @@ def main():
         autostartx()
 
     if not scriptrun():
-        if syst in {"Windows", "Linux"}
+        if syst in {"Windows", "Linux"}:
             Popen([str(dr() / gamzscript())])
         elif syst == "Darwin":
             Popen(["open", "/Applications/GamzScript.app"])
