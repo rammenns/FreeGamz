@@ -292,10 +292,16 @@ end run
                 )
 
                 if permission.returncode != 0:
+                    try:
+                        updatepth().unlink()
+                    except FileNotFoundError:
+                        pass
+                    except PermissionError:
+                        pass
                     self.setText("Update canceled :( Try again?")
                     self.progress.hide()
                     self.setEnabled(True)
-                    subprocess.Popen([str(dr() / "GamzScript")])
+                    subprocess.Popen(["/Applications/Gamzy.app/Contents/MacOS/GamzScript"])
                     return
 
             elif syst == "Linux":
