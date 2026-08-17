@@ -512,7 +512,7 @@ async def mainscript(gmz, conngmz):
                             if ubihrf:
                                 ubinam = ubigam.get("title-text")
                                 if ubinam:
-                                    ubinam = BeautifulSoup(ubinam, "html.parser").get_text(strip=True).removeprefix("Get ").removesuffix(" for free!")
+                                    ubinam = BeautifulSoup(str(ubinam), "html.parser").get_text(strip=True).removeprefix("Get ").removesuffix(" for free!")
                                 else:
                                     ubinam = ""
                                 ubifile = ""
@@ -521,7 +521,7 @@ async def mainscript(gmz, conngmz):
                                     ubiext = Path(ubiurl.split("?")[0]).suffix
                                     ubifile = dr() / "gamzimgs" / f"{namecut(ubinam)}{ubiext}"
                                     if not ubifile.exists():
-                                        ubiimgresp = await ubi.get(ubiurl)
+                                        ubiimgresp = await ubi.get(str(ubiurl))
                                         ubiimgresp.raise_for_status()
                                         with open(ubifile, "wb") as f:
                                             f.write(ubiimgresp.content)
