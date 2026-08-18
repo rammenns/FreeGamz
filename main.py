@@ -16,7 +16,7 @@ def autostartx():
         script = dr() / "GamzScript"
 
         if not script.exists():
-            return
+            return None
 
         autostart = Path.home() / ".config" / "autostart"
         autostart.mkdir(parents = True, exist_ok = True)
@@ -24,7 +24,7 @@ def autostartx():
         desktop = autostart / "GamzScript.desktop"
 
         if desktop.exists() and f'Exec="{script}"' in desktop.read_text(encoding = "utf-8"):
-            return
+            return None
 
         desktop.write_text(
 f"""[Desktop Entry]
@@ -39,7 +39,7 @@ X-GNOME-Autostart-enabled=true
             encoding = "utf-8"
         )
 
-    else:
+    elif syst == "Darwin":
 
         uid = subprocess.check_output(["id", "-u"], text=True).strip()
         service = f"gui/{uid}/com.gamzy.GamzScript"
@@ -52,7 +52,7 @@ X-GNOME-Autostart-enabled=true
         if check.returncode == 0:
             return True
 
-        script = Path("/Applications/Gamzy.app/Contents/MacOS/GamzScript")
+        script = dr() / "GamzScript"
 
         if not script.exists():
             return False
@@ -60,27 +60,13 @@ X-GNOME-Autostart-enabled=true
         launchagents = Path.home() / "Library" / "LaunchAgents"
         launchagents.mkdir(parents=True, exist_ok=True)
 
+        source_plist = Path(sys._MEIPASS) / "com.gamzy.GamzScript.plist"
         plist = launchagents / "com.gamzy.GamzScript.plist"
 
-        plist.write_text(
-f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"
-"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.gamzy.GamzScript</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>{script}</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-</dict>
-</plist>
-""",
-            encoding="utf-8"
-        )
+        try:
+            plist.write_bytes(source_plist.read_bytes())
+        except FileNotFoundError:
+            return False
 
         resultz = subprocess.run([
             "launchctl",
@@ -89,6 +75,9 @@ f"""<?xml version="1.0" encoding="UTF-8"?>
             str(plist)
         ])
         return resultz.returncode == 0
+
+    return None
+
 
 def dr():
     if getattr(sys, "frozen", False):
@@ -121,14 +110,15 @@ def main():
     if uirun():
         return
 
-    if syst in {"Linux", "Darwin"}:
-        autoxbool = autostartx() if syst == "Darwin" else None
+    if syst == "Linux":
+        autostartx()
 
-    if not scriptrun():
-        if syst in {"Windows", "Linux"}:
-            subprocess.Popen([str(dr() / gamzscript())])
-        elif syst == "Darwin" and not autoxbool:
-            subprocess.Popen(["/Applications/Gamzy.app/Contents/MacOS/GamzScript"])
+    autoxbool = True
+    if syst == "Darwin":
+        autoxbool = autostartx()
+
+    if not scriptrun() and (syst != "Darwin" or not autoxbool):
+        subprocess.Popen([str(dr() / gamzscript())])
 
     window = MainWindow()
     window.show()
