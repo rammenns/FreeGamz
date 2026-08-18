@@ -630,7 +630,7 @@ class MainWindow(QMainWindow):
                     QMessageBox.critical(
                         self,
                         "Uninstall failed",
-                        "Gamzy could not start the uninstall process."
+                        "Gamzy could not start the uninstall process. :("
                     )
 
         else:
