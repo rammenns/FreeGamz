@@ -606,7 +606,7 @@ class MainWindow(QMainWindow):
 
     def uninstallconfirm(self):
 
-        if not Path("/Applications/Gamzy.app").exists():
+        if Path("/Applications/Gamzy.app").exists():
 
             msg = QMessageBox(self)
             msg.setWindowTitle("Uninstall Gamzy")
