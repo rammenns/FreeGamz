@@ -6,7 +6,9 @@ if syst == "Windows":
     from ctypes import windll
 elif syst == "Linux":
     from shutil import which
-elif syst != "Darwin":
+elif syst == "Darwin":
+    from PyQt5.QtCore import QSize
+else:
     app = QApplication(sys.argv)
     QMessageBox.critical(
         None,
@@ -209,6 +211,12 @@ class updatebutton(QPushButton):
                     1
                 )
                 if permission <= 32:
+                    try:
+                        updatepth().unlink()
+                    except FileNotFoundError:
+                        pass
+                    except PermissionError:
+                        pass
                     self.setText("Update canceled :( Try again?")
                     self.progress.hide()
                     self.setEnabled(True)
@@ -301,7 +309,7 @@ end run
                     self.setText("Update canceled :( Try again?")
                     self.progress.hide()
                     self.setEnabled(True)
-                    subprocess.Popen(["/Applications/Gamzy.app/Contents/MacOS/GamzScript"])
+                    subprocess.Popen([str(dr() / "GamzScript")])
                     return
 
             elif syst == "Linux":
@@ -340,7 +348,20 @@ exec ./Gamzy
 
                 subprocess.run(["chmod", "+x", str(shellpth)])
 
-                subprocess.Popen(["pkexec", str(shellpth)])
+                permission = subprocess.run(["pkexec", str(shellpth)], capture_output = True, text = True)
+
+                if permission.returncode != 0:
+                    try:
+                        scriptpth.unlink()
+                    except FileNotFoundError:
+                        pass
+                    except PermissionError:
+                        pass
+                    self.setText("Update canceled :( Try again?")
+                    self.progress.hide()
+                    self.setEnabled(True)
+                    subprocess.Popen([str(dr() / "GamzScript")])
+                    return
 
             QApplication.quit()
 
@@ -505,6 +526,23 @@ class MainWindow(QMainWindow):
         chk.execute("SELECT platform, hide, silence FROM checks")
         rows = chk.fetchall()
 
+        if syst == "Darwin":
+            self.biutuon = QPushButton()
+            self.biutuon.setIcon(QIcon(str(pathfind("uninstall.png"))))
+            self.biutuon.setIconSize(QSize(36, 36))
+            self.biutuon.setFixedSize(36, 36)
+            self.biutuon.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background: transparent;
+                }
+            """)
+            self.biutuon.clicked.connect(self.uninstallconfirm)
+            delbut = QHBoxLayout()
+            delbut.addWidget(self.biutuon)
+            delbut.setAlignment(Qt.AlignRight)
+            layout.addLayout(delbut)
+
         self.hidedropdown = QToolButton()
         self.hidedropdown.setText("Hide    >")
 
@@ -566,6 +604,42 @@ class MainWindow(QMainWindow):
             if appimage:
                 Path(appimage).with_name("update.sh").unlink(missing_ok=True)
 
+    def uninstallconfirm(self):
+
+        if not Path("/Applications/Gamzy.app").exists():
+
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Uninstall Gamzy")
+            msg.setText("Do you want to uninstall Gamzy?")
+
+            yes = msg.addButton("Yes", QMessageBox.YesRole)
+            cancel = msg.addButton("Cancel", QMessageBox.NoRole)
+
+            msg.exec_()
+
+            if msg.clickedButton() == yes:
+                source = pathfind("uninstall.sh")
+                uninstall = Path(tempfile.gettempdir()) / "gamzy-uninstall.sh"
+
+                try:
+                    uninstall.write_bytes(source.read_bytes())
+                    subprocess.run(["chmod", "+x", str(uninstall)], check=True)
+                    subprocess.Popen([str(uninstall)])
+                    QApplication.quit()
+                except Exception:
+                    QMessageBox.critical(
+                        self,
+                        "Uninstall failed",
+                        "Gamzy could not start the uninstall process."
+                    )
+
+        else:
+
+            QMessageBox.information(
+                self,
+                "Gamzy",
+                "Gamzy needs to be in the Applications folder"
+            )
 
     def createmenus(self):
 
@@ -697,15 +771,21 @@ class MainWindow(QMainWindow):
                 "User-Agent": "Gamzy"
             }
             try:
-                url = get("https://api.github.com/repos/rammenns/Gamzy/releases/latest",headers = headers, timeout = 5)
+                url = get("https://api.github.com/repos/rammenns/Gamzy/releases", headers = headers, timeout = 5)
                 url.raise_for_status()
-                ver = url.json()
-                if ver["tag_name"] != "1.9":
-                    tag_name = ver["tag_name"]
-                    for asset in ver['assets']:
-                        if (syst == "Windows" and asset["name"].endswith(".exe")) or (syst == "Darwin" and asset["name"].endswith(".dmg")) or (syst == "Linux" and asset["name"].endswith(".tar.gz")):
-                            self.scrolyout.addWidget(updatebutton(self.basefont, tag_name))
-                            break
+                releases = url.json()
+                upstop = False
+                for ver in releases:
+                    if upstop: break
+                    if ver["tag_name"] != "1.9":
+                        tag_name = ver["tag_name"]
+                        for asset in ver['assets']:
+                            if (syst == "Windows" and asset["name"].endswith(".exe")) or (syst == "Darwin" and asset["name"].endswith(".dmg")) or (syst == "Linux" and asset["name"].endswith(".tar.gz")):
+                                self.scrolyout.addWidget(updatebutton(self.basefont, tag_name))
+                                upstop = True
+                                break
+                    else:
+                        upstop = True
             except:
                 pass
 
