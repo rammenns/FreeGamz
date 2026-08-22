@@ -74,7 +74,7 @@ X-GNOME-Autostart-enabled=true
             return
 
         content = content.replace(
-            "GAMZYSCRIPT_PATH",
+            "GamzScriptPTH",
             str(script)
         )
 
@@ -103,9 +103,11 @@ def uirun():
 def scriptrun():
 
     for p in psutil.process_iter(['name']):
-        if p.info['name'] == gamzscript():
-            return True
-
+        try:
+            if p.info['name'] == gamzscript():
+                return True
+        except(psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
     return False
 
 def main():
