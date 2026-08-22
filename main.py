@@ -69,9 +69,16 @@ X-GNOME-Autostart-enabled=true
         plist = launchagents / "com.gamzy.GamzScript.plist"
 
         try:
-            plist.write_bytes(source_plist.read_bytes())
+            content = source_plist.read_text(encoding="utf-8")
         except FileNotFoundError:
             return
+
+        content = content.replace(
+            "GAMZYSCRIPT_PATH",
+            str(script)
+        )
+
+        plist.write_text(content, encoding="utf-8")
 
         subprocess.run([
             "launchctl",
