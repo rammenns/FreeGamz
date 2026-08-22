@@ -21,7 +21,7 @@ def autostartx():
         script = dr() / "GamzScript"
 
         if not script.exists():
-            return
+            return None
 
         autostart = Path.home() / ".config" / "autostart"
         autostart.mkdir(parents = True, exist_ok = True)
@@ -29,7 +29,7 @@ def autostartx():
         desktop = autostart / "GamzScript.desktop"
 
         if desktop.exists() and f'Exec="{script}"' in desktop.read_text(encoding = "utf-8"):
-            return
+            return None
 
         desktop.write_text(
 f"""[Desktop Entry]
@@ -44,7 +44,10 @@ X-GNOME-Autostart-enabled=true
             encoding = "utf-8"
         )
 
-    elif syst == "Darwin" and Path("/Applications/Gamzy.app").exists():
+    elif syst == "Darwin":
+    
+        if not Path("/Applications/Gamzy.app").exists():
+            return False
 
         uid = subprocess.check_output(["id", "-u"], text=True).strip()
         service = f"gui/{uid}/com.gamzy.GamzScript"
@@ -55,23 +58,23 @@ X-GNOME-Autostart-enabled=true
         )
 
         if check.returncode == 0:
-            return
+            return False
 
         script = dr() / "GamzScript"
 
         if not script.exists():
-            return
+            return False
 
         launchagents = Path.home() / "Library" / "LaunchAgents"
         launchagents.mkdir(parents=True, exist_ok=True)
 
-        source_plist = Path(sys.executable).parent.parent / "Resources" / "com.gamzy.GamzScript.plist"
+        source_plist = dr().parent / "Resources" / "com.gamzy.GamzScript.plist"
         plist = launchagents / "com.gamzy.GamzScript.plist"
 
         try:
             content = source_plist.read_text(encoding="utf-8")
         except FileNotFoundError:
-            return
+            return False
 
         content = content.replace(
             "GamzScriptPTH",
@@ -80,12 +83,16 @@ X-GNOME-Autostart-enabled=true
 
         plist.write_text(content, encoding="utf-8")
 
-        subprocess.run([
+        hooray = subprocess.run([
             "launchctl",
             "bootstrap",
             f"gui/{uid}",
             str(plist)
         ])
+
+        return hooray.returncode == 0
+
+    return None
 
 
 def gamzscript():
@@ -116,11 +123,14 @@ def main():
     if uirun():
         return
 
-    if syst in {"Linux", "Darwin"}:
+    if syst == "Linux":
         autostartx()
+        if not scriptrun():
+            subprocess.Popen([str(dr() / gamzscript())])
 
-    if not scriptrun():
-        subprocess.Popen([str(dr() / gamzscript())])
+    elif syst == "Darwin":
+        if not scriptrun() and not autostartx():
+            subprocess.Popen([str(dr() / gamzscript())])
 
     window = MainWindow()
     window.show()
