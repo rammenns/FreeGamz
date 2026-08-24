@@ -1031,12 +1031,12 @@ class MainWindow(QMainWindow):
         conn = connect(gamespth, timeout=10)
         cursor = conn.cursor()
 
-        if not self.storedgames:
+        if not self.storedgamz:
             conn.close()
             return
-        pholder = ",".join("?" for _ in self.storedgames)
+        pholder = ",".join("?" for _ in self.storedgamz)
 
-        cursor.execute(f"UPDATE games SET new = ? WHERE link IN ({pholder})", (False, *self.storedgames))
+        cursor.execute(f"UPDATE games SET new = ? WHERE link IN ({pholder})", (False, *self.storedgamz))
         conn.commit()
 
         conn.close()
