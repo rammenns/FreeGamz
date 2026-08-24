@@ -184,7 +184,7 @@ class updatebutton(QPushButton):
             QApplication.processEvents()
 
             safepth = str(dbdr() / "safe.db")
-            connsafe = connect(safepth, timeout=10)
+            connsafe = connect(f"file:{safepth}?mode=ro", uri=True, timeout=10)
             safe = connsafe.cursor()
             safe.execute("SELECT safe FROM safety")
             row = safe.fetchone()
@@ -611,6 +611,8 @@ class MainWindow(QMainWindow):
         scroll.setWidget(scrollgamz)
         layout.addWidget(scroll)
 
+        self.storedgamz = []
+
         p = self.creategamz(updt)
 
         self.timer = QTimer(self)
@@ -833,7 +835,7 @@ class MainWindow(QMainWindow):
         cursor = None
         try:
             gamespth = str(dbdr() / "games.db")
-            conn = connect(gamespth, timeout = 10)
+            conn = connect(f"file:{gamespth}?mode=ro", uri=True, timeout = 10)
             cursor = conn.cursor()
         except:
             return False
@@ -855,6 +857,7 @@ class MainWindow(QMainWindow):
         except:
             rows = []
 
+        self.storedgamz = []
 
         for link, image, name, platform, new in rows:
             if len(name) > 43:
@@ -875,6 +878,7 @@ class MainWindow(QMainWindow):
             font.setPointSize(self.uiscale(10))
             card = gamUI(link, image, name, platform, new, font, self.currdpi)
             self.scrolyout.addWidget(card)
+            self.storedgamz.append(link)
 
 
         conn.close()
@@ -1006,17 +1010,36 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
 
-        try:
-            gamespth = str(dbdr() / "games.db")
-            conn = connect(gamespth, timeout=10)
-            cursor = conn.cursor()
+        safepth = str(dbdr() / "safe.db")
+        connsafe = connect(f"file:{safepth}?mode=ro", uri=True, timeout=10)
+        safe = connsafe.cursor()
+        row = safe.fetchone()
+        if row:
+            while not row[0]:
+                sleep(10)
+                try:
+                    safe.execute("SELECT safe FROM safety")
+                    row = safe.fetchone()
+                except:
+                    pass
+        else:
+            connsafe.close()
+            return
+        connsafe.close()
 
-            cursor.execute("UPDATE games SET new = ?", (False,))
-            conn.commit()
+        gamespth = str(dbdr() / "games.db")
+        conn = connect(gamespth, timeout=10)
+        cursor = conn.cursor()
 
+        if not self.storedgames:
             conn.close()
-        except:
-            pass
+            return
+        pholder = ",".join("?" for _ in self.storedgames)
+
+        cursor.execute(f"UPDATE games SET new = ? WHERE link IN ({pholder})", (False, *self.storedgames))
+        conn.commit()
+
+        conn.close()
 
 
 def main():
