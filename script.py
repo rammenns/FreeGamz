@@ -574,6 +574,7 @@ def main():
     try:
         safepth = str(dr() / "safe.db")
         connsafe = connect(safepth)
+        connsafe.execute("PRAGMA journal_mode=WAL")
         safe = connsafe.cursor()
         safe.execute("CREATE TABLE IF NOT EXISTS safety (safe BOOLEAN)")
         safe.execute("SELECT safe FROM safety")
@@ -620,6 +621,7 @@ def main():
         conntmr = connect(timerpth)
         gamespth = str(dr() / "games.db")
         conngmz = connect(gamespth, timeout = 10)
+        conngmz.execute("PRAGMA journal_mode=WAL")
 
         gimgpth = dr() / "gamzimgs"
         if not gimgpth.exists():
