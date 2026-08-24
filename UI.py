@@ -188,7 +188,15 @@ class updatebutton(QPushButton):
             safe = connsafe.cursor()
             safe.execute("SELECT safe FROM safety")
             row = safe.fetchone()
-            if not row or not row[0]:
+            if row:
+                while not row[0]:
+                    sleep(10)
+                    try:
+                        safe.execute("SELECT safe FROM safety")
+                        row = safe.fetchone()
+                    except:
+                        pass
+            else:
                 connsafe.close()
                 self.setText("Woops, small error :( Try again in a few seconds")
                 self.progress.hide()
@@ -196,6 +204,11 @@ class updatebutton(QPushButton):
                 return
 
             connsafe.close()
+
+            safepth = None
+            connsafe = None
+            safe = None
+            row = None
 
             if syst == "Windows":
 
