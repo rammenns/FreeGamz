@@ -124,7 +124,7 @@ async def mainscript(gmz, conngmz):
 
             if thisissil is None or thisissil < len(silencedones):
 
-                notif = DesktopNotifier()
+                notif = DesktopNotifier(app_name = "Gamzy")
 
                 await notif.send(
                     title = "Gamz Found!",
