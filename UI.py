@@ -1010,6 +1010,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
 
+        if not self.storedgamz: return
+
         safepth = str(dbdr() / "safe.db")
         connsafe = connect(f"file:{safepth}?mode=ro", uri=True, timeout=10)
         safe = connsafe.cursor()
@@ -1032,9 +1034,6 @@ class MainWindow(QMainWindow):
         conn = connect(gamespth, timeout=10)
         cursor = conn.cursor()
 
-        if not self.storedgamz:
-            conn.close()
-            return
         pholder = ",".join("?" for _ in self.storedgamz)
 
         cursor.execute(f"UPDATE games SET new = ? WHERE link IN ({pholder})", (False, *self.storedgamz))
