@@ -1013,6 +1013,7 @@ class MainWindow(QMainWindow):
         safepth = str(dbdr() / "safe.db")
         connsafe = connect(f"file:{safepth}?mode=ro", uri=True, timeout=10)
         safe = connsafe.cursor()
+        safe.execute("SELECT safe FROM safety")
         row = safe.fetchone()
         if row:
             while not row[0]:
