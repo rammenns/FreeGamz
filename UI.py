@@ -36,11 +36,14 @@ def pathfind(f):
 def dbdr():
     if not getattr(sys, "frozen", False):
         return Path(__file__).resolve().parent
-    elif syst != "Darwin":
-        return Path(sys.executable).parent
-    macOSpth = Path.home() / "Library" / "Application Support" / "Gamzy"
-    macOSpth.mkdir(parents=True, exist_ok=True)
-    return macOSpth
+    elif syst == "Windows":
+        stuffpth = Path.home() / "AppData" / "Roaming" / "Gamzy"
+    elif syst == "Linux":
+        stuffpth = Path.home() / ".local" / "share" / "Gamzy"
+    else:
+        stuffpth = Path.home() / "Library" / "Application Support" / "Gamzy"
+    stuffpth.mkdir(parents=True, exist_ok=True)
+    return stuffpth
 
 def dr():
     if getattr(sys, "frozen", False):
@@ -1031,7 +1034,7 @@ class MainWindow(QMainWindow):
         connsafe.close()
 
         gamespth = str(dbdr() / "games.db")
-        conn = connect(gamespth, timeout=10)
+        conn = connect(gamespth, timeout = 10)
         cursor = conn.cursor()
 
         pholder = ",".join("?" for _ in self.storedgamz)
@@ -1045,6 +1048,7 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
