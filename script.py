@@ -1,7 +1,7 @@
 import platform
 import sys
 syst = platform.system()
-if syst not in {"Windows", "Darwin", "Linux"}:
+if syst not in {"Windows", "Linux", "Darwin"}:
     print(f"Unsupported operating system: {syst}")
     sys.exit(1)
 from sqlite3 import connect, OperationalError
@@ -17,14 +17,22 @@ import asyncio
 from requests import Session
 import json
 
+def resourcepth(name):
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / name
+    return Path(__file__).resolve().parent / name
+
 def dr():
     if not getattr(sys, "frozen", False):
         return Path(__file__).resolve().parent
-    elif syst != "Darwin":
-        return Path(sys.executable).parent
-    macOSpth = Path.home() / "Library" / "Application Support" / "Gamzy"
-    macOSpth.mkdir(parents=True, exist_ok=True)
-    return macOSpth
+    elif syst == "Windows":
+        stuffpth = Path.home() / "AppData" / "Roaming" / "Gamzy"
+    elif syst == "Linux":
+        stuffpth = Path.home() / ".local" / "share" / "Gamzy"
+    else:
+        stuffpth = Path.home() / "Library" / "Application Support" / "Gamzy"
+    stuffpth.mkdir(parents=True, exist_ok=True)
+    return stuffpth
 
 def Gamzy():
     if syst != "Darwin":
@@ -124,12 +132,12 @@ async def mainscript(gmz, conngmz):
 
             if thisissil is None or thisissil < len(silencedones):
 
-                notif = DesktopNotifier(app_name = "Gamzy")
+                notif = DesktopNotifier(app_name = " ")
 
                 await notif.send(
                     title = "Gamz Found!",
+                    icon = resourcepth("gamzylogo.png"),
                     message = "Hey, there are new games waiting for you! Check 'em now!",
-                    #icon = dr() / "AppLogo.png",
                     buttons = [
                         Button(
                             title = "Open",
