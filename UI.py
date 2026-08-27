@@ -193,12 +193,13 @@ class updatebutton(QPushButton):
             safe.execute("SELECT safe FROM safety")
             row = safe.fetchone()
             if row:
-                if row[0]:
-                    self.ossrch()
-                else:
-                    osing = QTimer(self)
-                    osing.timeout.connect(self.ossrch)
-                    osing.start(5000)
+                while not row[0]:
+                    sleep(5)
+                    try:
+                        safe.execute("SELECT safe FROM safety")
+                        row = safe.fetchone()
+                    except:
+                        pass
             else:
                 connsafe.close()
                 self.setText("Woops, small error :( Try again in a few seconds")
@@ -206,96 +207,73 @@ class updatebutton(QPushButton):
                 self.setEnabled(True)
                 return
 
+            connsafe.close()
+
             safepth = None
             connsafe = None
             safe = None
             row = None
 
-        except Exception:
-            self.setText("Update failed :( Try again")
-            self.progress.hide()
-            self.setEnabled(True)
-            return
+            if syst == "Windows":
 
-        def ossrch():
+                subprocess.run(
+                    [
+                        "taskkill",
+                        "/F",
+                        "/IM",
+                        "GamzScript.exe"
+                    ],
+                    capture_output=True
+                )
 
-            if not self.osstop:
-
-                safepth = str(dbdr() / "safe.db")
-                connsafe = connect(f"file:{safepth}?mode=ro", uri=True, timeout=10)
-                safe = connsafe.cursor()
-                safe.execute("SELECT safe FROM safety")
-                row = safe.fetchone()
-                if not row[0]:
+                permission = windll.shell32.ShellExecuteW(
+                    None,
+                    "runas",
+                    scriptpth,
+                    "/SILENT /NORESTART",
+                    None,
+                    1
+                )
+                if permission <= 32:
+                    try:
+                        updatepth().unlink()
+                    except FileNotFoundError:
+                        pass
+                    except PermissionError:
+                        pass
+                    self.setText("Update canceled :( Try again?")
+                    self.progress.hide()
+                    self.setEnabled(True)
+                    subprocess.Popen([str(dr() / "GamzScript.exe")])
                     return
 
-                self.osstop = True
+            elif syst == "Darwin":
 
-                safepth = None
-                connsafe = None
-                safe = None
-                row = None
+                check = subprocess.run(
+                    [
+                        "hdiutil",
+                        "verify",
+                        str(updatepth())
+                    ],
+                    capture_output=True
+                )
 
-                if syst == "Windows":
+                if check.returncode != 0:
+                    self.setText("Update failed :( Try again?")
+                    self.progress.hide()
+                    self.setEnabled(True)
+                    return
 
-                    subprocess.run(
-                        [
-                            "taskkill",
-                            "/F",
-                            "/IM",
-                            "GamzScript.exe"
-                        ],
-                        capture_output=True
-                    )
+                subprocess.run(
+                    [
+                        "pkill",
+                        "-f",
+                        "GamzScript"
+                    ],
+                    capture_output=True
+                )
 
-                    permission = windll.shell32.ShellExecuteW(
-                        None,
-                        "runas",
-                        scriptpth,
-                        "/SILENT /NORESTART",
-                        None,
-                        1
-                    )
-                    if permission <= 32:
-                        try:
-                            updatepth().unlink()
-                        except FileNotFoundError:
-                            pass
-                        except PermissionError:
-                            pass
-                        self.setText("Update canceled :( Try again?")
-                        self.progress.hide()
-                        self.setEnabled(True)
-                        subprocess.Popen([str(dr() / "GamzScript.exe")])
-                        return
-
-                elif syst == "Darwin":
-
-                    check = subprocess.run(
-                        [
-                            "hdiutil",
-                            "verify",
-                            str(updatepth())
-                        ],
-                        capture_output=True
-                    )
-
-                    if check.returncode != 0:
-                        self.setText("Update failed :( Try again?")
-                        self.progress.hide()
-                        self.setEnabled(True)
-                        return
-
-                    subprocess.run(
-                        [
-                            "pkill",
-                            "-f",
-                            "GamzScript"
-                        ],
-                        capture_output=True
-                    )
-
-                    script = f"""#!/bin/sh
+                script = f"""#!/bin/sh
 (
 sleep 5
 
@@ -323,53 +301,53 @@ open "/Applications/Gamzy.app"
 
 exit 0
 """
-                    with open(shellpth, "w") as f:
-                        f.write(script)
+                with open(shellpth, "w") as f:
+                    f.write(script)
 
-                    subprocess.run(["chmod", "+x", str(shellpth)])
+                subprocess.run(["chmod", "+x", str(shellpth)])
 
-                    applescript = '''
+                applescript = '''
 on run argv
 do shell script quoted form of (item 1 of argv) with administrator privileges
 end run
 '''
 
-                    permission = subprocess.run(
-                        [
-                            "osascript",
-                            "-e",
-                            applescript,
-                            str(shellpth)
-                        ],
-                        capture_output=True,
-                        text=True
-                    )
+                permission = subprocess.run(
+                    [
+                        "osascript",
+                        "-e",
+                        applescript,
+                        str(shellpth)
+                    ],
+                    capture_output=True,
+                    text=True
+                )
 
-                    if permission.returncode != 0:
-                        try:
-                            updatepth().unlink()
-                        except FileNotFoundError:
-                            pass
-                        except PermissionError:
-                            pass
-                        self.setText("Update canceled :( Try again?")
-                        self.progress.hide()
-                        self.setEnabled(True)
-                        subprocess.Popen([str(dr() / "GamzScript")])
-                        return
+                if permission.returncode != 0:
+                    try:
+                        updatepth().unlink()
+                    except FileNotFoundError:
+                        pass
+                    except PermissionError:
+                        pass
+                    self.setText("Update canceled :( Try again?")
+                    self.progress.hide()
+                    self.setEnabled(True)
+                    subprocess.Popen([str(dr() / "GamzScript")])
+                    return
 
-                elif syst == "Linux":
+            elif syst == "Linux":
 
-                    subprocess.run(
-                        [
-                            "pkill",
-                            "-f",
-                            "GamzScript"
-                        ],
-                        capture_output=True
-                    )
+                subprocess.run(
+                    [
+                        "pkill",
+                        "-f",
+                        "GamzScript"
+                    ],
+                    capture_output=True
+                )
 
-                    script = f"""#!/bin/sh
+                script = f"""#!/bin/sh
 sleep 2
 
 cd "{dr()}"
@@ -389,27 +367,34 @@ rm -rf .update
 
 exec ./Gamzy
 """
-                    with open(shellpth, "w") as f:
-                        f.write(script)
+                with open(shellpth, "w") as f:
+                    f.write(script)
 
-                    subprocess.run(["chmod", "+x", str(shellpth)])
+                subprocess.run(["chmod", "+x", str(shellpth)])
 
-                    permission = subprocess.run(["pkexec", str(shellpth)], capture_output = True, text = True)
+                permission = subprocess.run(["pkexec", str(shellpth)], capture_output = True, text = True)
 
-                    if permission.returncode != 0:
-                        try:
-                            scriptpth.unlink()
-                        except FileNotFoundError:
-                            pass
-                        except PermissionError:
-                            pass
-                        self.setText("Update canceled :( Try again?")
-                        self.progress.hide()
-                        self.setEnabled(True)
-                        subprocess.Popen([str(dr() / "GamzScript")])
-                        return
+                if permission.returncode != 0:
+                    try:
+                        scriptpth.unlink()
+                    except FileNotFoundError:
+                        pass
+                    except PermissionError:
+                        pass
+                    self.setText("Update canceled :( Try again?")
+                    self.progress.hide()
+                    self.setEnabled(True)
+                    subprocess.Popen([str(dr() / "GamzScript")])
+                    return
 
-                QApplication.quit()
+            QApplication.quit()
+
+        except Exception:
+            self.setText("Update failed :( Try again")
+            self.progress.hide()
+            self.setEnabled(True)
+            return
+    
     def applyScaleAgain(self, dpi):
 
         font = QFont(self.baseFont)
