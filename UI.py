@@ -558,7 +558,7 @@ class MainWindow(QMainWindow):
                     "Move Gamzy into the Applications folder in order to function properly."
                 )
             self.biutuon = QPushButton()
-            self.biutuon.setIcon(QIcon(str(Path(sys.executable).parent.parent / "Resources" / "uninstall.png")))
+            self.biutuon.setIcon(QIcon(str(pathfind("uninstall.png"))))
             self.biutuon.setIconSize(QSize(36, 36))
             self.biutuon.setFixedSize(36, 36)
             self.biutuon.setStyleSheet("""
