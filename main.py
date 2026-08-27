@@ -120,9 +120,11 @@ def scriptrun():
 def main():
 
     if uirun():
-        return
+        sys.exit()
 
     app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
 
     if syst == "Windows" and not scriptrun():
         subprocess.Popen([str(dr() / gamzscript())])
@@ -135,9 +137,6 @@ def main():
     elif syst == "Darwin":
         if not scriptrun() and not autostartx():
             subprocess.Popen([str(dr() / gamzscript())])
-
-    window = MainWindow()
-    window.show()
 
     sys.exit(app.exec_())
 
