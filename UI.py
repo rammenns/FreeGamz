@@ -22,6 +22,7 @@ from PyQt5.QtGui import QIcon, QPixmap, QFontDatabase, QFont
 from PyQt5.QtCore import Qt, QTimer
 from webbrowser import open_new_tab
 from requests import get
+from time import sleep
 import subprocess
 import tempfile
 from sqlite3 import connect
@@ -98,7 +99,6 @@ class updatebutton(QPushButton):
             }
         """)
 
-        self.osstop = False
         self.clicked.connect(self.update)
 
     def update(self):
@@ -394,7 +394,7 @@ exec ./Gamzy
             self.progress.hide()
             self.setEnabled(True)
             return
-    
+
     def applyScaleAgain(self, dpi):
 
         font = QFont(self.baseFont)
@@ -1023,7 +1023,7 @@ class MainWindow(QMainWindow):
         row = safe.fetchone()
         if row:
             while not row[0]:
-                sleep(10)
+                sleep(5)
                 try:
                     safe.execute("SELECT safe FROM safety")
                     row = safe.fetchone()
