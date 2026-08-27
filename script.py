@@ -35,10 +35,7 @@ def dr():
     return stuffpth
 
 def Gamzy():
-    if syst != "Darwin":
-        Popen([str((Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent) / ("Gamzy.exe" if syst == "Windows" else "Gamzy"))])
-    else:
-        Popen(["open", str(Path(sys.executable).parent.parent.parent)])
+    Popen([str((Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent) / ("Gamzy.exe" if syst == "Windows" else "Gamzy"))])
 
 def namecut(nam):
     inval = '<>:"/\\|?*'
