@@ -118,12 +118,16 @@ def scriptrun():
     return False
 
 def main():
-    app = QApplication(sys.argv)
 
     if uirun():
         return
 
-    if syst == "Linux":
+    app = QApplication(sys.argv)
+
+    if syst == "Windows" and not scriptrun():
+        subprocess.Popen([str(dr() / gamzscript())])
+
+    elif syst == "Linux":
         autostartx()
         if not scriptrun():
             subprocess.Popen([str(dr() / gamzscript())])
